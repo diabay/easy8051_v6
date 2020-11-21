@@ -1,0 +1,4 @@
+".\Objects\STARTUP.obj",
+".\Objects\main.obj" 
+TO ".\Objects\InputOutput" 
+PRINT(".\Listings\InputOutput.m51") RAMSIZE(256) 
