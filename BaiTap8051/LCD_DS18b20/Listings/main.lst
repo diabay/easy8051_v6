@@ -1,0 +1,266 @@
+C51 COMPILER V9.60.0.0   MAIN                                                              08/18/2020 14:06:26 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\main
+                    -.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include <reg52.h>
+   2          #include <stdio.h>
+   3          //#include <math.h>
+   4          #include <intrins.h>
+   5          #include <string.h>
+   6          #define Pdata P2
+   7          
+   8          #define RS 0x01
+   9          #define EN 0x02
+  10          
+  11          sbit DQ=P1^2;
+  12          
+  13          //sbit RS= P2^0;
+  14          //sbit EN= P2^1;
+  15          
+  16          unsigned char x,y,z;
+  17          unsigned char giay;
+  18          
+  19          void delay( unsigned int t)
+  20          {
+  21   1        unsigned int i;
+  22   1        for(i=0;i<t;++i);
+  23   1      }
+  24          
+  25          void delay_timer0(unsigned int i)  //delay 1.2us
+  26          {
+  27   1        unsigned int load_value;
+  28   1        load_value=65536 - i;
+  29   1        TH0=load_value >> 8;TL0=load_value & 0x00FF;
+  30   1        TR0=1;
+  31   1        while(TF0==0);
+  32   1        TF0=0;
+  33   1        TR0=0;
+  34   1      }
+  35          
+  36          ///////[start] hien thi lcd//////////////
+  37          
+  38          void write_command(char LCDcmd) // ghi lenh ra LCD
+  39          {
+  40   1        Pdata=((LCDcmd & 0xF0) >>2)|EN;
+  41   1        delay_timer0(1);
+  42   1        Pdata=((LCDcmd & 0xF0) >>2);
+  43   1        delay_timer0(2);
+  44   1        Pdata=((LCDcmd & 0x0F) <<2)|EN;
+  45   1        delay_timer0(1);
+  46   1        Pdata=((LCDcmd & 0x0F) <<2);
+  47   1        delay_timer0(2);
+  48   1      }
+  49          
+  50          void write_data(char LCDdt) //ghi du lieu can hien thi ra LCD
+  51          {
+  52   1        Pdata =((LCDdt & 0xF0)>>2)|RS|EN;
+  53   1        delay_timer0(1);
+  54   1        Pdata =((LCDdt & 0xF0)>>2)|RS;
+C51 COMPILER V9.60.0.0   MAIN                                                              08/18/2020 14:06:26 PAGE 2   
+
+  55   1        delay_timer0(2);
+  56   1        Pdata =((LCDdt & 0x0F)<<2)|RS|EN;
+  57   1        delay_timer0(1);
+  58   1        Pdata =((LCDdt & 0x0F)<<2)|RS;
+  59   1        delay_timer0(2);
+  60   1      }
+  61          
+  62          void write_string( unsigned char *s)
+  63          {
+  64   1        while(*s)//ghi mot chuoi ky tu ra LCD
+  65   1        {
+  66   2          write_data(*s);
+  67   2          s++;
+  68   2        }
+  69   1      }
+  70          
+  71          void lcd_reset()
+  72          {
+  73   1              Pdata = 0xFF;
+  74   1              delay_timer0(14200);
+  75   1              Pdata = 0x0C+EN;
+  76   1              Pdata = 0x0C;
+  77   1              delay_timer0(8400);
+  78   1              Pdata = 0x0C+EN;
+  79   1              Pdata = 0x0C;
+  80   1              delay_timer0(833);
+  81   1              Pdata = 0x0C+EN;
+  82   1              Pdata = 0x0C;
+  83   1              delay_timer0(833);
+  84   1              Pdata = 0x08+EN;
+  85   1              Pdata = 0x08;
+  86   1              delay_timer0(833);
+  87   1      }
+  88          
+  89          void init(void)
+  90          {
+  91   1        lcd_reset();         // Call LCD reset
+  92   1        write_command(0x28); /* 4-bit mode - 2 line - 5x7 font. */
+  93   1        delay_timer0(40);
+  94   1        write_command(0x0C); /* Display no cursor - no blink. */
+  95   1        delay_timer0(40);
+  96   1        write_command(0x06); /* Automatic Increment - No Display shift */
+  97   1        delay_timer0(40);
+  98   1        write_command(0x01);  /* Clear display */
+  99   1        delay_timer0(1500);
+ 100   1        write_command(0x80);  /* Address DDRAM with 0 offset 80h */
+ 101   1        delay_timer0(1500);
+ 102   1      }
+ 103          
+ 104          ///////[start] Do nhiet do ds18b20//////////////
+ 105          
+ 106          // OW_RESET - performs a reset on the one-wire bus and
+ 107          // returns the presence detect. Reset is 480us, so delay
+ 108          // value is (480-24)/16 = 28.5 - we use 29. Presence checked
+ 109          // another 70us later, so delay is (70-24)/16 = 2.875 - we use 3.
+ 110          
+ 111          unsigned char ow_reset(void)
+ 112          {
+ 113   1        unsigned char presence;
+ 114   1        DQ = 0; //pull DQ line low
+ 115   1        delay_timer0(400); // leave it low for 480us
+ 116   1        DQ = 1; // allow line to return high
+C51 COMPILER V9.60.0.0   MAIN                                                              08/18/2020 14:06:26 PAGE 3   
+
+ 117   1        delay_timer0(58); // wait for presence
+ 118   1        presence = DQ; // get presence signal
+ 119   1        delay_timer0(342); // wait for end of timeslot
+ 120   1        return(presence); // presence signal returned
+ 121   1      }// return 0: good
+ 122          
+ 123          unsigned char read_byte()
+ 124          {
+ 125   1      unsigned char i;
+ 126   1      unsigned char value = 0;
+ 127   1        for (i=0;i<8;i++)
+ 128   1        {
+ 129   2          DQ = 0; // pull DQ low to start timeslot
+ 130   2          delay_timer0(5);
+ 131   2          DQ = 1; // then return high
+ 132   2          delay_timer0(8); // delay 15us from start of timeslot (9us)
+ 133   2          if(DQ==1) {value= (value | 0x01)<<i;} // reads byte in, one byte at a time and then
+ 134   2                                        // shifts it left
+ 135   2          delay_timer0(46);                       // wait for rest of timeslot
+ 136   2        }
+ 137   1      return(value);
+ 138   1      }
+ 139          
+ 140          void write_byte(unsigned char val)
+ 141          {
+ 142   1      unsigned char i;
+ 143   1      unsigned char temp;
+ 144   1        for (i=0; i<8; i++) // writes byte, one bit at a time
+ 145   1          {
+ 146   2            temp = val>>i; // shifts val right 'i' spaces
+ 147   2            temp &= 0x01; // copy that bit to temp
+ 148   2            DQ = 0; // pull DQ low to start timeslot
+ 149   2            if(temp==1) 
+ 150   2              {delay_timer0(5); DQ =1;delay_timer0(54);} // return DQ high if write 1
+ 151   2            else  {delay_timer0(50);DQ = 1;delay_timer0(9);}
+ 152   2        // hold value for remainder of timeslot
+ 153   2          }
+ 154   1      //delay_timer0(86);
+ 155   1      }
+ 156          
+ 157          int Read_Temperature(void)
+ 158          {
+ 159   1      char get[10];
+ 160   1      char temp_lsb,temp_msb;
+ 161   1      unsigned char k;
+ 162   1      char temp_c;
+ 163   1        EA=0;
+ 164   1      while(ow_reset());
+ 165   1      write_byte(0xCC); //Skip ROM
+ 166   1      write_byte(0x44); // Start Conversion
+ 167   1      delay_timer0(100); // 120us
+ 168   1      while(ow_reset());
+ 169   1      write_byte(0xCC); // Skip ROM
+ 170   1      write_byte(0xBE); // Read Scratch Pad
+ 171   1      for (k=0;k<2;k++){get[k]=read_byte();}
+ 172   1      //printf("\n ScratchPAD DATA = %X%X%X%X%X\n",get[8],get[7],get[6],get[5],get[4],get[3],get[2],get[1],get[0
+             -]);
+ 173   1      temp_msb = get[1]; // Sign byte + lsbit
+ 174   1      temp_lsb = get[0]; // Temp data plus lsb
+ 175   1      
+ 176   1      if (temp_msb <= 0x80){temp_lsb = (temp_lsb/2);} // shift to get whole degree
+ 177   1      temp_msb = temp_msb & 0x80; // mask all but the sign bit
+C51 COMPILER V9.60.0.0   MAIN                                                              08/18/2020 14:06:26 PAGE 4   
+
+ 178   1      if (temp_msb >= 0x80) {temp_lsb = (~temp_lsb)+1;} // twos complement
+ 179   1      if (temp_msb >= 0x80) {temp_lsb = (temp_lsb/2);}// shift to get whole degree
+ 180   1      if (temp_msb >= 0x80) {temp_lsb = ((-1)*temp_lsb);} // add sign bit
+ 181   1      //printf( "\nTempC= %d degrees C\n", (int)temp_lsb ); // print temp. C
+ 182   1      //temp_c =  (temp_msb << 8) | temp_lsb ; // ready for conversion to Fahrenheit
+ 183   1      //temp_c >>= 4;
+ 184   1      
+ 185   1      temp_c = (int)temp_lsb;
+ 186   1      
+ 187   1        EA=1;
+ 188   1      return(temp_c);
+ 189   1      }
+ 190          
+ 191          void main()
+ 192          {
+ 193   1      
+ 194   1        /*timer0, dinh thoi che do 1*/
+ 195   1          TMOD=0x01; 
+ 196   1          TH0=0x00;
+ 197   1          TL0=0x00;
+ 198   1      
+ 199   1          init();
+ 200   1          write_string("DiaBay.vn");
+ 201   1          write_command(0xc0);
+ 202   1          delay(10);
+ 203   1          write_string("Hello World!");
+ 204   1      
+ 205   1        while(1)
+ 206   1        {
+ 207   2            giay = Read_Temperature();
+ 208   2            x=giay%10; giay=giay/10;
+ 209   2            y=giay%10; z=giay/10;
+ 210   2            x=x+48;
+ 211   2            y=y+48;
+ 212   2            z=z+48;
+ 213   2          
+ 214   2            write_command(0x8A);
+ 215   2            write_data(z);
+ 216   2            write_data(y);
+ 217   2            write_data(x);
+ 218   2            write_command(0x8E);
+ 219   2            write_data('C');
+ 220   2          
+ 221   2      //      for(i=0;i<16;i++)
+ 222   2      //      {
+ 223   2      //        write_command(0x18);
+ 224   2      //        for(j=0;j<50;j++)
+ 225   2      //        {
+ 226   2      //          delay_timer0(16667);
+ 227   2      //        }
+ 228   2      //      }
+ 229   2            
+ 230   2        }
+ 231   1      }
+ 232          
+ 233            
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    807    ----
+   CONSTANT SIZE    =     23    ----
+   XDATA SIZE       =   ----    ----
+C51 COMPILER V9.60.0.0   MAIN                                                              08/18/2020 14:06:26 PAGE 5   
+
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      4      10
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

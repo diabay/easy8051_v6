@@ -1,0 +1,229 @@
+C51 COMPILER V9.60.0.0   MAIN                                                              08/21/2020 23:31:12 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\main
+                    -.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          
+   2          #include <REG8253.H>
+   3          #include <stdio.h>
+   4          //#include <math.h>
+   5          #include <intrins.h>
+   6          #include <string.h>
+   7          #define Pdata P2
+   8          
+   9          #define RS 0x01
+  10          #define EN 0x02
+  11          
+  12          // MCP23S17 Registers Definition for BANK=0 (default)
+  13          #define IODIRA 0x00
+  14          #define IODIRB 0x01
+  15          #define IOCONA 0x0A
+  16          #define GPPUA  0x0C
+  17          #define GPPUB  0x0D
+  18          #define GPIOA  0x12
+  19          #define GPIOB  0x13
+  20          
+  21          //sbit DQ=P1^2;
+  22            sbit CS=P3^4;
+  23            sbit Reset=P3^7;
+  24          
+  25          //sbit RS= P2^0;
+  26          //sbit EN= P2^1;
+  27          
+  28          
+  29          void delay( unsigned int t)
+  30          {
+  31   1        unsigned int i;
+  32   1        for(i=0;i<t;++i);
+  33   1      }
+  34          
+  35          void delay_timer0(unsigned int i)  //delay 1.2us
+  36          {
+  37   1        unsigned int load_value;
+  38   1        load_value=65536 - i;
+  39   1        TH0=load_value >> 8;TL0=load_value & 0x00FF;
+  40   1        TR0=1;
+  41   1        while(TF0==0);
+  42   1        TF0=0;
+  43   1        TR0=0;
+  44   1      }
+  45          
+  46          ///////[start] hien thi lcd//////////////
+  47          
+  48          void write_command(char LCDcmd) // ghi lenh ra LCD
+  49          {
+  50   1        Pdata=((LCDcmd & 0xF0) >>2)|EN;
+  51   1        delay_timer0(1);
+  52   1        Pdata=((LCDcmd & 0xF0) >>2);
+  53   1        delay_timer0(2);
+  54   1        Pdata=((LCDcmd & 0x0F) <<2)|EN;
+C51 COMPILER V9.60.0.0   MAIN                                                              08/21/2020 23:31:12 PAGE 2   
+
+  55   1        delay_timer0(1);
+  56   1        Pdata=((LCDcmd & 0x0F) <<2);
+  57   1        delay_timer0(2);
+  58   1      }
+  59          
+  60          void write_data(char LCDdt) //ghi du lieu can hien thi ra LCD
+  61          {
+  62   1        Pdata =((LCDdt & 0xF0)>>2)|RS|EN;
+  63   1        delay_timer0(1);
+  64   1        Pdata =((LCDdt & 0xF0)>>2)|RS;
+  65   1        delay_timer0(2);
+  66   1        Pdata =((LCDdt & 0x0F)<<2)|RS|EN;
+  67   1        delay_timer0(1);
+  68   1        Pdata =((LCDdt & 0x0F)<<2)|RS;
+  69   1        delay_timer0(2);
+  70   1      }
+  71          
+  72          void write_string( unsigned char *s)
+  73          {
+  74   1        while(*s)//ghi mot chuoi ky tu ra LCD
+  75   1        {
+  76   2          write_data(*s);
+  77   2          s++;
+  78   2        }
+  79   1      }
+  80          
+  81          void lcd_reset()
+  82          {
+  83   1        Pdata = 0xFF;
+  84   1        delay_timer0(14200);
+  85   1        Pdata = 0x0C+EN;
+  86   1        Pdata = 0x0C;
+  87   1        delay_timer0(8400);
+  88   1        Pdata = 0x0C+EN;
+  89   1        Pdata = 0x0C;
+  90   1        delay_timer0(833);
+  91   1        Pdata = 0x0C+EN;
+  92   1        Pdata = 0x0C;
+  93   1        delay_timer0(833);
+  94   1        Pdata = 0x08+EN;
+  95   1        Pdata = 0x08;
+  96   1        delay_timer0(833);
+  97   1      }
+  98          
+  99          void init_LCD(void)
+ 100          {
+ 101   1        lcd_reset();         // Call LCD reset
+ 102   1        write_command(0x28); /* 4-bit mode - 2 line - 5x7 font. */
+ 103   1        delay_timer0(40);
+ 104   1        write_command(0x0C); /* Display no cursor - no blink. */
+ 105   1        delay_timer0(40);
+ 106   1        write_command(0x06); /* Automatic Increment - No Display shift */
+ 107   1        delay_timer0(40);
+ 108   1        write_command(0x01);  /* Clear display */
+ 109   1        delay_timer0(1500);
+ 110   1        write_command(0x80);  /* Address DDRAM with 0 offset 80h */
+ 111   1        delay_timer0(1500);
+ 112   1      }
+ 113          
+ 114          void SPI_Write (unsigned char address, unsigned char setb)
+ 115          {
+ 116   1        //Write
+C51 COMPILER V9.60.0.0   MAIN                                                              08/21/2020 23:31:12 PAGE 3   
+
+ 117   1        CS=0;
+ 118   1        SPDR=0x40;
+ 119   1        while((SPSR & 0x80)==0);
+ 120   1        SPDR=address;
+ 121   1        while((SPSR & 0x80)==0);
+ 122   1        SPDR= setb;
+ 123   1        while((SPSR & 0x80)==0);
+ 124   1        CS=1;
+ 125   1        delay(5);
+ 126   1      }
+ 127          
+ 128          unsigned char SPI_Read (unsigned char address)
+ 129          {
+ 130   1        //Read
+ 131   1        unsigned char b;
+ 132   1        CS=0;
+ 133   1        SPDR=0x41;
+ 134   1        while((SPSR & 0x80)==0);
+ 135   1        SPDR=address;
+ 136   1        while((SPSR & 0x80)==0);
+ 137   1        SPDR=0x00;
+ 138   1        while((SPSR & 0x80)==0);
+ 139   1        b=SPDR;
+ 140   1        CS=1;
+ 141   1        delay(5);
+ 142   1        return(b);
+ 143   1      }
+ 144          
+ 145          void main()
+ 146          {
+ 147   1        unsigned char i,j,value,x;
+ 148   1      
+ 149   1      /*timer0, dinh thoi che do 1*/
+ 150   1        TMOD=0x01; 
+ 151   1        TH0=0x00;
+ 152   1        TL0=0x00;
+ 153   1      
+ 154   1      // Khoi tao truyen du lieu SPI
+ 155   1        SPCR=0x51;
+ 156   1        CS=1;
+ 157   1        Reset=0;
+ 158   1        delay_timer0(10);
+ 159   1        Reset=1;
+ 160   1      
+ 161   1        init_LCD();
+ 162   1        write_string("DiaBay.vn");
+ 163   1        write_command(0xc0);
+ 164   1        delay(10);
+ 165   1      
+ 166   1          // SPI init
+ 167   1        // Initial the MCP23S17 SPI I/O Expander
+ 168   1        SPI_Write(IOCONA,0x28);   // I/O Control Register: BANK=0, SEQOP=1, HAEN=1 (Enable Addressing)
+ 169   1        SPI_Write(IODIRA,0x00);   // GPIOA As Output
+ 170   1        SPI_Write(IODIRB,0x00);   // GPIOB As Output
+ 171   1        SPI_Write(GPIOB,0x00);    // Reset Output on GPIOB
+ 172   1        SPI_Write(GPIOA,0x00);    // Reset Output on GPIOA
+ 173   1          
+ 174   1        while(1)
+ 175   1        {
+ 176   2            for(i=0;i<225;i++)
+ 177   2          {
+ 178   3            SPI_Write(GPIOA,i);
+C51 COMPILER V9.60.0.0   MAIN                                                              08/21/2020 23:31:12 PAGE 4   
+
+ 179   3            SPI_Write(GPIOB,255-i);
+ 180   3            x=SPI_Read(GPIOA);
+ 181   3            for(j=0;j<8;j++)
+ 182   3            {
+ 183   4              value = x & 0x80;
+ 184   4              if(value ==0x80)
+ 185   4                write_data('1');
+ 186   4              else
+ 187   4                write_data('0');
+ 188   4              x <<=1;
+ 189   4            }
+ 190   3            write_command(0xC0);
+ 191   3            for (j=0;j<50;j++)
+ 192   3            {
+ 193   4              delay_timer0(8333);
+ 194   4            }
+ 195   3          }
+ 196   2        }
+ 197   1      }
+ 198          
+ 199            
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    607    ----
+   CONSTANT SIZE    =     10    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

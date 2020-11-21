@@ -1,0 +1,174 @@
+C51 COMPILER V9.60.0.0   MAIN                                                              08/18/2020 14:15:28 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\main
+                    -.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include <reg52.h>
+   2          #include <stdio.h>
+   3          //#include <math.h>
+   4          #include <intrins.h>
+   5          #include <string.h>
+   6          #define Pdata P2
+   7          
+   8          #define RS 0x01
+   9          #define EN 0x02
+  10          
+  11          sbit DQ=P1^2;
+  12          
+  13          //sbit RS= P2^0;
+  14          //sbit EN= P2^1;
+  15          
+  16          unsigned char x,y,z;
+  17          unsigned char giay;
+  18          
+  19          void delay( unsigned int t)
+  20          {
+  21   1        unsigned int i;
+  22   1        for(i=0;i<t;++i);
+  23   1      }
+  24          
+  25          void delay_timer0(unsigned int i)  //delay 1.2us
+  26          {
+  27   1        unsigned int load_value;
+  28   1        load_value=65536 - i;
+  29   1        TH0=load_value >> 8;TL0=load_value & 0x00FF;
+  30   1        TR0=1;
+  31   1        while(TF0==0);
+  32   1        TF0=0;
+  33   1        TR0=0;
+  34   1      }
+  35          
+  36          ///////[start] hien thi lcd//////////////
+  37          
+  38          void write_command(char LCDcmd) // ghi lenh ra LCD
+  39          {
+  40   1        Pdata=((LCDcmd & 0xF0) >>2)|EN;
+  41   1        delay_timer0(1);
+  42   1        Pdata=((LCDcmd & 0xF0) >>2);
+  43   1        delay_timer0(2);
+  44   1        Pdata=((LCDcmd & 0x0F) <<2)|EN;
+  45   1        delay_timer0(1);
+  46   1        Pdata=((LCDcmd & 0x0F) <<2);
+  47   1        delay_timer0(2);
+  48   1      }
+  49          
+  50          void write_data(char LCDdt) //ghi du lieu can hien thi ra LCD
+  51          {
+  52   1        Pdata =((LCDdt & 0xF0)>>2)|RS|EN;
+  53   1        delay_timer0(1);
+  54   1        Pdata =((LCDdt & 0xF0)>>2)|RS;
+C51 COMPILER V9.60.0.0   MAIN                                                              08/18/2020 14:15:28 PAGE 2   
+
+  55   1        delay_timer0(2);
+  56   1        Pdata =((LCDdt & 0x0F)<<2)|RS|EN;
+  57   1        delay_timer0(1);
+  58   1        Pdata =((LCDdt & 0x0F)<<2)|RS;
+  59   1        delay_timer0(2);
+  60   1      }
+  61          
+  62          void write_string( unsigned char *s)
+  63          {
+  64   1        while(*s)//ghi mot chuoi ky tu ra LCD
+  65   1        {
+  66   2          write_data(*s);
+  67   2          s++;
+  68   2        }
+  69   1      }
+  70          
+  71          void lcd_reset()
+  72          {
+  73   1              Pdata = 0xFF;
+  74   1              delay_timer0(14200);
+  75   1              Pdata = 0x0C+EN;
+  76   1              Pdata = 0x0C;
+  77   1              delay_timer0(8400);
+  78   1              Pdata = 0x0C+EN;
+  79   1              Pdata = 0x0C;
+  80   1              delay_timer0(833);
+  81   1              Pdata = 0x0C+EN;
+  82   1              Pdata = 0x0C;
+  83   1              delay_timer0(833);
+  84   1              Pdata = 0x08+EN;
+  85   1              Pdata = 0x08;
+  86   1              delay_timer0(833);
+  87   1      }
+  88          
+  89          void init(void)
+  90          {
+  91   1        lcd_reset();         // Call LCD reset
+  92   1        write_command(0x28); /* 4-bit mode - 2 line - 5x7 font. */
+  93   1        delay_timer0(40);
+  94   1        write_command(0x0C); /* Display no cursor - no blink. */
+  95   1        delay_timer0(40);
+  96   1        write_command(0x06); /* Automatic Increment - No Display shift */
+  97   1        delay_timer0(40);
+  98   1        write_command(0x01);  /* Clear display */
+  99   1        delay_timer0(1500);
+ 100   1        write_command(0x80);  /* Address DDRAM with 0 offset 80h */
+ 101   1        delay_timer0(1500);
+ 102   1      }
+ 103          
+ 104          void main()
+ 105          {
+ 106   1      
+ 107   1        /*timer0, dinh thoi che do 1*/
+ 108   1          TMOD=0x01; 
+ 109   1          TH0=0x00;
+ 110   1          TL0=0x00;
+ 111   1      
+ 112   1          init();
+ 113   1          write_string("DiaBay.vn");
+ 114   1          write_command(0xc0);
+ 115   1          delay(10);
+ 116   1          write_string("Hello World!");
+C51 COMPILER V9.60.0.0   MAIN                                                              08/18/2020 14:15:28 PAGE 3   
+
+ 117   1      
+ 118   1        while(1)
+ 119   1        {
+ 120   2            giay = 100;
+ 121   2            x=giay%10; giay=giay/10;
+ 122   2            y=giay%10; z=giay/10;
+ 123   2            x=x+48;
+ 124   2            y=y+48;
+ 125   2            z=z+48;
+ 126   2          
+ 127   2            write_command(0x8A);
+ 128   2            write_data(z);
+ 129   2            write_data(y);
+ 130   2            write_data(x);
+ 131   2            write_command(0x8E);
+ 132   2            write_data('C');
+ 133   2          
+ 134   2      //      for(i=0;i<16;i++)
+ 135   2      //      {
+ 136   2      //        write_command(0x18);
+ 137   2      //        for(j=0;j<50;j++)
+ 138   2      //        {
+ 139   2      //          delay_timer0(16667);
+ 140   2      //        }
+ 141   2      //      }
+ 142   2            
+ 143   2        }
+ 144   1      }
+ 145          
+ 146            
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    473    ----
+   CONSTANT SIZE    =     23    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      4    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
