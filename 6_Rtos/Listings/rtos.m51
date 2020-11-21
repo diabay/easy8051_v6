@@ -1,0 +1,11 @@
+BL51 BANKED LINKER/LOCATER V6.22.2.0                                                    08/19/2020  14:37:06  PAGE 1
+
+
+BL51 BANKED LINKER/LOCATER V6.22.2.0, INVOKED BY:
+C:\KEIL_V5\C51\BIN\BL51.EXE .\Objects\STARTUP.obj, .\Objects\Main.obj TO .\Objects\rtos PRINT (.\Listings\rtos.m51) RAMS
+>> IZE (256)
+
+
+*** FATAL ERROR L210: I/O ERROR ON INPUT FILE:
+    EXCEPTION 0021H: PATH OR FILE NOT FOUND
+    FILE: C:\KEIL_V5\C51\LIB\RTX51.LIB

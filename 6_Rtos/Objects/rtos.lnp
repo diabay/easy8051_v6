@@ -1,0 +1,4 @@
+".\Objects\STARTUP.obj",
+".\Objects\Main.obj" 
+TO ".\Objects\rtos" 
+PRINT(".\Listings\rtos.m51") RAMSIZE(256) 
